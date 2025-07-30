@@ -21,7 +21,7 @@ class ProxyServer(BaseModel):
         ..., min_length=1, max_length=50, description="代理服务器名称，用于标识和选择"
     )
     base_url: str = Field(..., description="代理服务器的基础URL，必须是有效的HTTP/HTTPS地址")
-    api_key: Optional[str] = Field(default=None, min_length=3, description="API密钥，用于身份验证")
+    api_key: Optional[str] = Field(default=None, description="API密钥，用于身份验证")
     description: str = Field(default="", max_length=200, description="代理服务器的描述信息")
     tags: List[str] = Field(default_factory=list, description="标签列表，用于分类和筛选")
     created_at: str = Field(
@@ -34,8 +34,22 @@ class ProxyServer(BaseModel):
     bigmodel: Optional[str] = Field(default=None, description="大模型名称")
     smallmodel: Optional[str] = Field(default=None, description="小模型名称")
     auth_token: Optional[str] = Field(
-        default=None, min_length=3, description="Auth令牌，用于身份验证（与api_key互斥）"
+        default=None, description="Auth令牌，用于身份验证（与api_key互斥）"
     )
+    @field_validator("api_key")
+    def validate_api_key(cls, v: Optional[str]) -> Optional[str]:
+        """验证API密钥格式"""
+        if v is not None and v != "" and len(v) < 3:
+            raise ValueError("API密钥长度不能少于3个字符")
+        return v
+
+    @field_validator("auth_token")
+    def validate_auth_token(cls, v: Optional[str]) -> Optional[str]:
+        """验证Auth令牌格式"""
+        if v is not None and v != "" and len(v) < 3:
+            raise ValueError("Auth令牌长度不能少于3个字符")
+        return v
+
     @field_validator("name")
     def validate_name(cls, v: str) -> str:
         """验证代理名称格式"""
@@ -83,26 +97,36 @@ class ProxyServer(BaseModel):
     @model_validator(mode="after")
     def api_key_or_auth_token(cls, values: Self) -> Self:
         """确保api_key或auth_token至少有一个"""
-        if values.api_key and values.auth_token:
+        api_key = values.api_key
+        auth_token = values.auth_token
+        
+        # 检查是否同时存在两种认证方式（都不为None且不为空字符串）
+        if api_key and api_key.strip() and auth_token and auth_token.strip():
             raise ValueError("api_key或auth_token只能存在一个")
-        if not values.api_key and not values.auth_token:
+        
+        # 检查是否至少有一种认证方式（不为None且不为空字符串）
+        has_api_key = api_key and api_key.strip()
+        has_auth_token = auth_token and auth_token.strip()
+        
+        if not has_api_key and not has_auth_token:
             raise ValueError("api_key或auth_token至少有一个必须存在")
+        
         return values
 
     def get_auth_method(self) -> str:
         """获取当前使用的认证方法"""
-        if self.auth_token:
+        if self.auth_token and self.auth_token.strip():
             return "auth_token"
-        elif self.api_key:
+        elif self.api_key and self.api_key.strip():
             return "api_key"
         else:
             return "none"
 
     def get_active_credential(self) -> Optional[str]:
         """获取当前活跃的认证凭据"""
-        if self.auth_token:
+        if self.auth_token and self.auth_token.strip():
             return self.auth_token
-        elif self.api_key:
+        elif self.api_key and self.api_key.strip():
             return self.api_key
         return None
 

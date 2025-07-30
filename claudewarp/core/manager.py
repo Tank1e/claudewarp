@@ -26,9 +26,9 @@ BUILTIN_PROXIES = {
     "no": ProxyServer(
         name="no",
         base_url="http://localhost/",
-        api_key="builtin-no-proxy",
-        description="内置代理：清空所有代理配置，恢复Claude Code默认设置",
-        tags=["builtin", "reset"],
+        api_key="原生API",
+        description="清空所有代理配置",
+        tags=["原生"],
         is_active=True,
         bigmodel=None,
         smallmodel=None,
