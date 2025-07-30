@@ -3,8 +3,8 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "claudewarp_cli"
-version = "0.0.35"
+name = "claudewarpcli"
+version = "1.0.2"
 description = "Claude API proxy management tool with CLI"
 readme = "README.md"
 license = "MIT"
