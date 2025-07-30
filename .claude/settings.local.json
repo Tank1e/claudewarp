@@ -9,7 +9,8 @@
       "Bash(conda create:*)",
       "Bash(grep:*)",
       "WebFetch(domain:docs.anthropic.com)",
-      "Bash(dir)"
+      "Bash(dir)",
+      "Bash(git add:*)"
     ],
     "deny": []
   }
