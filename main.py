@@ -1,34 +1,31 @@
 #!/usr/bin/env python3
 """
-Optimized GUI-only entry point for ClaudeWarp
+ClaudeWarp - Claude API proxy management tool
 
-This entry point excludes all CLI dependencies (typer, click, rich)
-to minimize the build size for GUI-only distributions.
+Main entry point for ClaudeWarp CLI application.
+Provides full command-line functionality for managing Claude API proxies.
 """
 
 import sys
 
 
 def main() -> int:
-    """GUI-only entry point with minimal dependencies"""
+    """Main entry point for ClaudeWarp application"""
     try:
-        # Only import GUI modules - no CLI dependencies
-        from claudewarp.gui.app import main as gui_main
+        # Import CLI modules with full functionality
+        from claudewarp.cli.main import main as cli_main
 
-        # Extract debug flag from command line arguments
-        debug = "--debug" in sys.argv
-
-        return gui_main(debug=debug)
+        return cli_main()
 
     except ImportError as e:
-        print(f"Error: Failed to import GUI modules: {e}")
-        print("Please ensure PySide6 and qfluentwidgets are installed")
+        print(f"Error: Failed to import CLI modules: {e}")
+        print("Please ensure typer and rich are installed")
         return 1
     except KeyboardInterrupt:
-        print("\nApplication interrupted by user")
+        print("\nOperation cancelled by user")
         return 130
     except Exception as e:
-        print(f"Application error: {e}")
+        print(f"Application execution failed: {e}")
         if "--debug" in sys.argv:
             import traceback
 

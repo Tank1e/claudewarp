@@ -21,6 +21,21 @@ from .exceptions import (
 )
 from .models import ExportFormat, ProxyConfig, ProxyServer
 
+# 内置代理配置
+BUILTIN_PROXIES = {
+    "no": ProxyServer(
+        name="no",
+        base_url="http://localhost/",
+        api_key="builtin-no-proxy",
+        description="内置代理：清空所有代理配置，恢复Claude Code默认设置",
+        tags=["builtin", "reset"],
+        is_active=True,
+        bigmodel=None,
+        smallmodel=None,
+        auth_token=None,
+    )
+}
+
 
 class ProxyManager:
     """代理服务器管理器
@@ -118,6 +133,10 @@ class ProxyManager:
             ValidationError: 数据验证失败
             ConfigError: 配置操作失败
         """
+        # 检查是否为保留名称
+        if name in BUILTIN_PROXIES:
+            raise ValidationError(f"'{name}' 是保留名称，不能用作代理名称")
+        
         # 检查重复
         if name in self.config.proxies:
             raise DuplicateProxyError(name)
@@ -204,35 +223,60 @@ class ProxyManager:
             ValidationError: 代理服务器未启用
             ConfigError: 配置操作失败
         """
+        # 处理内置代理
+        if name in BUILTIN_PROXIES:
+            proxy = BUILTIN_PROXIES[name]
+            
+            # 特殊处理 "no" 代理
+            if name == "no":
+                try:
+                    # 清空当前代理设置
+                    self.config.current_proxy = None
+                    self._save_config()
+                    self.logger.info("已清除当前代理设置")
+                    
+                    # 清空 Claude Code 配置
+                    self._clear_claude_code_config()
+                    self.logger.info("已清空 Claude Code 代理配置")
+                    
+                    return proxy
+                except Exception as e:
+                    self.logger.error(f"切换到 'no' 代理失败: {e}")
+                    raise ConfigError(f"切换到 'no' 代理失败: {e}") from None
+            
+            # 其他内置代理的处理逻辑可以在这里添加
+            
+        # 处理用户自定义代理
         if name not in self.config.proxies:
-            raise ProxyNotFoundError(name)
+            if name not in BUILTIN_PROXIES:
+                raise ProxyNotFoundError(name)
 
-        proxy = self.config.proxies[name]
+        proxy = self.config.proxies[name] if name not in BUILTIN_PROXIES else BUILTIN_PROXIES[name]
 
-        # 检查代理是否启用
-        if not proxy.is_active:
+        # 检查代理是否启用（内置代理默认启用）
+        if not proxy.is_active and name not in BUILTIN_PROXIES:
             raise ValidationError(f"代理服务器 '{name}' 未启用，无法切换")
 
         try:
-            # 设置当前代理
-            success = self.config.set_current_proxy(name)
+            # 设置当前代理（内置代理不保存到配置中）
+            if name not in BUILTIN_PROXIES:
+                success = self.config.set_current_proxy(name)
+                if success:
+                    # 保存配置
+                    self._save_config()
+                    self.logger.info(f"已切换到代理服务器: {name}")
 
-            if success:
-                # 保存配置
-                self._save_config()
-                self.logger.info(f"已切换到代理服务器: {name}")
+                    # 自动应用到 Claude Code
+                    try:
+                        self.apply_claude_code_setting(name)
+                        self.logger.info(f"已自动应用代理 '{name}' 到 Claude Code")
+                    except Exception as e:
+                        self.logger.warning(f"应用代理到 Claude Code 失败: {e}")
+                        # 不影响代理切换的主要功能，只记录警告
 
-                # 自动应用到 Claude Code
-                try:
-                    self.apply_claude_code_setting(name)
-                    self.logger.info(f"已自动应用代理 '{name}' 到 Claude Code")
-                except Exception as e:
-                    self.logger.warning(f"应用代理到 Claude Code 失败: {e}")
-                    # 不影响代理切换的主要功能，只记录警告
-
-                return proxy
-            else:
-                raise OperationError("切换代理服务器失败", operation="switch_proxy", target=name)
+                    return proxy
+                else:
+                    raise OperationError("切换代理服务器失败", operation="switch_proxy", target=name)
 
         except Exception as e:
             self.logger.error(f"切换代理服务器失败: {e}")
@@ -258,6 +302,10 @@ class ProxyManager:
         Raises:
             ProxyNotFoundError: 代理服务器不存在
         """
+        # 检查内置代理
+        if name in BUILTIN_PROXIES:
+            return BUILTIN_PROXIES[name]
+            
         if name not in self.config.proxies:
             raise ProxyNotFoundError(name)
 
@@ -272,10 +320,15 @@ class ProxyManager:
         Returns:
             Dict[str, ProxyServer]: 代理服务器字典
         """
+        # 开始时包含内置代理
+        result = BUILTIN_PROXIES.copy()
+        
         if active_only:
-            return self.config.get_active_proxies()
+            result.update(self.config.get_active_proxies())
         else:
-            return self.config.proxies.copy()
+            result.update(self.config.proxies.copy())
+            
+        return result
 
     def get_proxy_names(self, active_only: bool = False) -> List[str]:
         """获取代理服务器名称列表
@@ -769,6 +822,71 @@ class ProxyManager:
             merged_config["permissions"] = {"allow": [], "deny": []}
 
         return merged_config
+
+    def _clear_claude_code_config(self) -> bool:
+        """清空Claude Code的代理配置，恢复默认设置
+
+        Returns:
+            bool: 是否成功清空配置
+        """
+        try:
+            # 获取 Claude Code 配置目录 (~/.claude)
+            claude_config_dir = self._get_claude_code_config_dir()
+            setting_file = claude_config_dir / "settings.json"
+            backup_file = claude_config_dir / "settings.json.claudewarp.bak"
+
+            # 如果配置文件不存在，无需清空
+            if not setting_file.exists():
+                self.logger.info("Claude Code 配置文件不存在，无需清空")
+                return True
+
+            # 读取现有配置
+            existing_config = {}
+            try:
+                with open(setting_file, "r", encoding="utf-8") as f:
+                    existing_config = json.load(f)
+            except (json.JSONDecodeError, Exception) as e:
+                self.logger.warning(f"读取现有配置文件失败: {e}")
+                existing_config = {}
+
+            # 清空代理相关的环境变量
+            if "env" in existing_config:
+                # 清除所有 Anthropic 相关的环境变量
+                anthropic_keys = [
+                    "ANTHROPIC_API_KEY",
+                    "ANTHROPIC_AUTH_TOKEN", 
+                    "ANTHROPIC_BASE_URL",
+                    "ANTHROPIC_MODEL",
+                    "ANTHROPIC_SMALL_FAST_MODEL",
+                    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"
+                ]
+                
+                for key in anthropic_keys:
+                    existing_config["env"].pop(key, None)
+                
+                # 如果env为空，则删除整个env字段
+                if not existing_config["env"]:
+                    existing_config.pop("env", None)
+
+            from .utils import atomic_write
+            
+            # 如果配置完全为空，删除文件
+            if not existing_config:
+                setting_file.unlink()
+                self.logger.info("已删除空的 Claude Code 配置文件")
+            else:
+                # 保存清理后的配置
+                config_json = json.dumps(existing_config, indent=2, ensure_ascii=False)
+                if atomic_write(setting_file, config_json):
+                    self.logger.info("已清空 Claude Code 代理配置")
+                else:
+                    raise ConfigError("写入 Claude Code 配置文件失败")
+
+            return True
+
+        except Exception as e:
+            self.logger.error(f"清空 Claude Code 配置失败: {e}")
+            raise ConfigError(f"清空 Claude Code 配置失败: {e}") from None
 
     def _generate_claude_code_config(self, proxy: ProxyServer) -> Dict[str, Any]:
         """生成 Claude Code 配置

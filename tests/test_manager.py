@@ -17,7 +17,7 @@ from claudewarp.core.exceptions import (
     ProxyNotFoundError,
     ValidationError,
 )
-from claudewarp.core.manager import ProxyManager
+from claudewarp.core.manager import ProxyManager, BUILTIN_PROXIES
 from claudewarp.core.models import ExportFormat, ProxyConfig, ProxyServer
 
 
@@ -686,3 +686,91 @@ def create_test_manager_with_proxies(proxy_count: int = 2) -> ProxyManager:
             manager.add_proxy(proxy)
 
         return manager
+
+
+class TestBuiltinProxies:
+    """测试内置代理功能"""
+
+    def test_builtin_proxies_exist(self):
+        """测试内置代理是否存在"""
+        assert "no" in BUILTIN_PROXIES
+        no_proxy = BUILTIN_PROXIES["no"]
+        assert no_proxy.name == "no"
+        assert no_proxy.base_url == "http://localhost/"
+        assert no_proxy.api_key == "builtin-no-proxy"
+        assert no_proxy.is_active == True
+
+    def test_cannot_add_reserved_name(self, temp_manager):
+        """测试不能添加保留名称的代理"""
+        with pytest.raises(ValidationError) as exc_info:
+            temp_manager.add_proxy(
+                name="no",
+                base_url="https://api.example.com/",
+                api_key="sk-test",
+                description="测试代理"
+            )
+        assert "'no' 是保留名称" in str(exc_info.value)
+
+    def test_get_builtin_proxy(self, temp_manager):
+        """测试获取内置代理"""
+        no_proxy = temp_manager.get_proxy("no")
+        assert no_proxy.name == "no"
+        assert no_proxy.base_url == "http://localhost/"
+        assert "内置代理" in no_proxy.description
+
+    def test_list_proxies_includes_builtin(self, temp_manager):
+        """测试列表包含内置代理"""
+        # 添加一个用户代理
+        proxy = ProxyServer(
+            name="user-proxy",
+            base_url="https://api.example.com/",
+            api_key="sk-test",
+            description="用户代理"
+        )
+        temp_manager.add_proxy(proxy)
+
+        # 获取所有代理列表
+        all_proxies = temp_manager.list_proxies()
+        assert "no" in all_proxies
+        assert "user-proxy" in all_proxies
+        assert len(all_proxies) == 2
+
+    @patch('claudewarp.core.manager.ProxyManager._clear_claude_code_config')
+    def test_switch_to_no_proxy(self, mock_clear_config, temp_manager):
+        """测试切换到no代理"""
+        # 模拟清空配置成功
+        mock_clear_config.return_value = True
+
+        # 首先添加一个用户代理并切换到它
+        proxy = ProxyServer(
+            name="user-proxy",
+            base_url="https://api.example.com/",
+            api_key="sk-test"
+        )
+        temp_manager.add_proxy(proxy)
+        temp_manager.switch_proxy("user-proxy")
+        assert temp_manager.config.current_proxy == "user-proxy"
+
+        # 切换到no代理
+        result_proxy = temp_manager.switch_proxy("no")
+        
+        # 验证结果
+        assert result_proxy.name == "no"
+        assert temp_manager.config.current_proxy is None
+        mock_clear_config.assert_called_once()
+
+    @patch('claudewarp.core.manager.ProxyManager._clear_claude_code_config')
+    def test_clear_claude_code_config_called(self, mock_clear_config, temp_manager):
+        """测试切换到no代理时调用清空配置方法"""
+        mock_clear_config.return_value = True
+        
+        temp_manager.switch_proxy("no")
+        mock_clear_config.assert_called_once()
+
+    def test_clear_claude_code_config_method(self, temp_manager):
+        """测试清空Claude Code配置的方法"""
+        # 这里只测试方法是否存在并可调用，不测试实际文件操作
+        # 实际的文件操作应该在集成测试中测试
+        with patch('pathlib.Path.exists', return_value=False):
+            result = temp_manager._clear_claude_code_config()
+            assert result == True

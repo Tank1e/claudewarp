@@ -1,320 +1,366 @@
-# ClaudeWarp
+# ClaudeWarp - Claude API 代理管理工具
 
-<p align="center">
-  <img src="claudewarp/gui/resources/icons/claudewarp.ico" alt="ClaudeWarp Logo" width="128" height="128">
-</p>
+一个用于管理和切换Claude API代理服务器的命令行工具，专为需要频繁切换代理的开发者设计。
 
-<p align="center">
-  <strong>Claude 中转站管理工具</strong>
-</p>
+## ✨ 特性
 
-<p align="center">
-  一个优雅的 Claude API 代理服务器管理工具，支持 CLI 和 GUI 双模式操作
-</p>
+- 🚀 **多代理管理** - 添加、删除、编辑多个Claude API代理服务器
+- 🔄 **一键切换** - 快速在不同代理间切换，自动更新Claude Code配置
+- 📦 **环境变量导出** - 支持Bash/Zsh/Fish/PowerShell等多种Shell格式
+- 🔧 **Claude Code集成** - 自动同步代理配置到Claude Code，无需手动修改
+- 🏷️ **标签管理** - 为代理添加标签，方便分类和搜索
+- 💾 **配置备份** - 自动备份配置文件，支持恢复
+- 🔐 **多种认证** - 支持API Key和Auth Token两种认证方式
 
-<p align="center">
-  <a href="https://github.com/belingud/claudewarp/blob/main/LICENSE">
-    <img src="https://img.shields.io/badge/License-LGPL%20v3-blue.svg" alt="License">
-  </a>
-  <a href="https://github.com/belingud/claudewarp/releases">
-    <img src="https://img.shields.io/github/v/release/belingud/claudewarp?include_prereleases" alt="Release">
-  </a>
-  <a href="https://python.org">
-    <img src="https://img.shields.io/badge/Python-3.8%2B-brightgreen" alt="Python Version">
-  </a>
-  <a href="https://github.com/belingud/claudewarp/actions">
-    <img src="https://img.shields.io/github/actions/workflow/status/belingud/claudewarp/build.yml?branch=master" alt="Build Status">
-  </a>
-</p>
+## 🚀 安装
 
----
-
-## ✨ 功能特色
-
-🚀 **双模式支持** - 既可命令行操作，也可图形界面管理  
-🔧 **智能配置** - 基于 TOML 的配置文件，支持自动验证和备份  
-🌐 **多代理管理** - 轻松添加、切换和管理多个 Claude 中转站  
-📝 **环境变量导出** - 支持多种 Shell 格式的环境变量导出  
-🏷️ **标签系统** - 为代理服务器添加标签，方便分类和筛选  
-✅ **数据验证** - 使用 Pydantic 确保配置数据的完整性和正确性  
-🎨 **美观界面** - 基于 PySide6 的现代化 GUI 界面  
-
-
-![Light](artwork/light.png)
-
-![Dark](artwork/dark.png)
-
----
-
-0729更新
-
-1. v0.0.34版本加上了auth token的配置，和api key互斥，只能配置一个
-
----
-
-0728更新
-
-1. v0.0.28版本加上了切换主题色的按钮，在亮色和暗色模式之间切换。详见上面的截图
-2. v0.0.28版本开始添加了`BIG_MODEL`和`SMALL_MODEL`，对应cc的`ANTHROPIC_MODEL`和`ANTHROPIC_SMALL_FAST_MODEL`。
-
-注意使用/model设置的模型，优先级大于`ANTHROPIC_MODEL`。为了环境变量和`settings.json`的一致性，claudewarp只设置`env.ANTHROPIC_MODEL`，不设置`model`字段。
-
----
-
-## 📦 安装方式
-
-### 从发布版本安装（推荐）
-
-访问 [Releases 页面](https://github.com/belingud/claudewarp/releases) 下载适合您系统的版本：
-
-- **macOS Intel**: 下载 `.dmg` 或 `.zip` 文件
-- **macOS Apple Silicon**: 下载对应 ARM64 版本
-- **Windows**: 下载 `.zip` 压缩包
-
-### 从源码安装
+### 方式一：pip安装 (推荐)
 
 ```bash
-# 克隆项目
-git clone https://github.com/belingud/claudewarp.git
-cd claudewarp
-
-# 使用 pip 安装
-pip install -e .
-```
-
-### 安装命令行版
-
-```bash
-# 使用pip
+# 直接安装
 pip install claudewarp
 
-# 使用uv
-uv tool install claudewarp
+# 立即可用
+cw --help
 ```
 
-## 🚀 快速开始
+### 方式二：本地开发安装
 
-### GUI 模式
-
-直接双击应用程序图标，或在终端运行：
+克隆项目后使用conda创建虚拟环境：
 
 ```bash
-# 从源码运行
-python main.py
+# 创建虚拟环境
+conda create --name cwenv python=3.11 -y
+conda activate cwenv
 
-# 或使用构建的应用
-./ClaudeWarp.app  # macOS
-claudewarp.exe    # Windows
+# 开发模式安装
+pip install -e .
+
+# 或者安装依赖后使用
+pip install -r requirements.txt
+python main.py --help
 ```
 
-### CLI 模式
+### 基本使用
 
 ```bash
-# 查看所有命令
+# 查看帮助
 cw --help
 
 # 添加代理服务器
-cw add --name proxy-cn --url https://api.claude-proxy.com/ --key sk-your-api-key
-# 或使用交互式
-cw add
+cw add my-proxy https://api.example.com your-api-key --desc "我的代理"
 
-# 查看所有代理
+# 查看代理列表
 cw list
 
-# 切换到指定代理
-cw use proxy-cn
+# 切换代理 (会自动更新Claude Code配置)
+cw use my-proxy
 
 # 查看当前代理
 cw current
 
 # 导出环境变量
-cw export
+cw export --format bash
 ```
 
-## 📖 详细使用说明
+## 📖 详细用法
 
-### CLI 命令参考
+### 代理管理
 
-| 命令               | 说明               | 示例                                                            |
-| ------------------ | ------------------ | --------------------------------------------------------------- |
-| `cw add`           | 添加新的代理服务器 | `cw add --name proxy-hk --url https://hk.api.com/ --key sk-xxx` |
-| `cw list`          | 列出所有代理服务器 | `cw list`                                                       |
-| `cw use <name>`    | 切换到指定代理     | `cw use proxy-cn`                                               |
-| `cw current`       | 显示当前活跃代理   | `cw current`                                                    |
-| `cw remove <name>` | 删除指定代理       | `cw remove proxy-old`                                           |
-| `cw export`        | 导出环境变量       | `cw export --shell bash`                                        |
+#### 添加代理
+```bash
+# 交互式添加
+cw add
 
-### 配置文件
+# 命令行添加 (API Key)
+cw add proxy1 https://api.proxy1.com sk-xxx --desc "代理1" --tags "fast,stable"
 
-配置文件位于：`~/.config/claudewarp/config.toml`
+# 使用Auth Token
+cw add proxy2 https://api.proxy2.com --auth-token your-token --desc "代理2"
 
-```toml
-version = "1.0"
-current_proxy = "proxy-cn"
+# 配置模型
+cw add proxy3 https://api.proxy3.com sk-xxx --bigmodel "claude-3-opus" --smallmodel "claude-3-haiku"
+```
 
-[proxies.proxy-cn]
-name = "proxy-cn"
-base_url = "https://api.claude-proxy.com/"
-api_key = "sk-1234567890abcdef"
-description = "国内主力节点"
-tags = ["china", "primary"]
-is_active = true
-created_at = "2024-01-15T10:30:00"
-updated_at = "2024-01-15T10:30:00"
+#### 查看代理
+```bash
+# 查看所有代理
+cw list
 
-[proxies.proxy-hk]
-name = "proxy-hk"
-base_url = "https://hk.claude-proxy.com/"
-api_key = "sk-abcdef1234567890"
-description = "香港备用节点"
-tags = ["hongkong", "backup"]
-is_active = true
-created_at = "2024-01-15T11:00:00"
-updated_at = "2024-01-15T11:00:00"
+# 查看特定代理详情
+cw info proxy1
 
-[settings]
-auto_backup = true
-backup_count = 5
-log_level = "INFO"
+# 查看当前代理
+cw current
+```
+
+#### 编辑代理
+```bash
+# 编辑代理信息
+cw edit proxy1 --desc "更新的描述" --tags "updated,fast"
+
+# 更新API密钥
+cw edit proxy1 --key new-api-key
+
+# 切换认证方式
+cw edit proxy1 --auth-token new-token  # 会清空API Key
+```
+
+#### 删除代理
+```bash
+# 删除代理
+cw remove proxy1
+```
+
+### 代理切换
+
+#### 切换代理
+```bash
+# 切换到指定代理 (会自动更新Claude Code配置)
+cw use proxy1
+
+# 查看当前使用的代理
+cw current
+```
+
+**⚠️ 重要提醒：** 切换代理会直接修改 `~/.claude/settings.json` 文件，建议先备份：
+```bash
+cp ~/.claude/settings.json ~/.claude/settings.json.backup
+```
+
+### 搜索和过滤
+
+#### 搜索代理
+```bash
+# 按名称搜索
+cw search proxy
+
+# 按标签搜索
+cw search fast
+
+# 按描述搜索
+cw search "测试"
 ```
 
 ### 环境变量导出
 
-支持多种 Shell 格式：
-
+#### 导出不同格式
 ```bash
-# Bash/Zsh
-cw export --shell bash
-# 输出：
-# export ANTHROPIC_API_KEY="sk-your-api-key"
-# export ANTHROPIC_BASE_URL="https://api.claude-proxy.com/"
+# Bash/Zsh格式
+cw export --format bash
 
-# PowerShell
-cw export --shell powershell
-# 输出：
-# $env:ANTHROPIC_API_KEY="sk-your-api-key"
-# $env:ANTHROPIC_BASE_URL="https://api.claude-proxy.com/"
+# PowerShell格式
+cw export --format powershell
 
-# Fish Shell
-cw export --shell fish
-# 输出：
-# set -x ANTHROPIC_API_KEY "sk-your-api-key"
-# set -x ANTHROPIC_BASE_URL "https://api.claude-proxy.com/"
+# Fish Shell格式
+cw export --format fish
+
+# 导出到文件
+cw export --format bash > proxy-env.sh
+source proxy-env.sh
 ```
 
-## 🏗️ 开发指南
+#### 自定义导出
+```bash
+# 导出指定代理
+cw export proxy1 --format bash
 
-### 项目结构
+# 包含注释
+cw export --format bash --comments
+
+# 导出所有代理
+cw export --format bash --all
+```
+
+## 🏗️ 项目结构
 
 ```
 claudewarp/
-├── claudewarp/              # 主应用包
-│   ├── core/               # 核心业务逻辑
-│   │   ├── config.py       # 配置管理
-│   │   ├── manager.py      # 代理管理器
-│   │   ├── models.py       # 数据模型
-│   │   ├── exceptions.py   # 异常定义
-│   │   └── utils.py        # 工具函数
-│   ├── cli/                # 命令行界面
-│   │   ├── commands.py     # CLI 命令
-│   │   ├── formatters.py   # 输出格式化
-│   │   └── main.py         # CLI 入口
-│   └── gui/                # 图形界面
-│       ├── app.py          # GUI 应用
-│       ├── main_window.py  # 主窗口
-│       ├── dialogs.py      # 对话框
-│       └── resources/      # 资源文件
-├── tests/                  # 测试文件
-├── scripts/                # 构建脚本
-├── main.py                 # 应用入口
-├── pyproject.toml          # 项目配置
-├── Justfile               # 构建命令
-└── BUILD.md               # 构建说明
+├── claudewarp/                 # 主应用包
+│   ├── cli/                   # 命令行界面层
+│   │   ├── commands.py        # CLI命令处理器
+│   │   ├── formatters.py      # 输出格式化器
+│   │   └── main.py           # CLI应用入口
+│   └── core/                  # 核心业务逻辑层
+│       ├── config.py         # 配置文件管理器
+│       ├── exceptions.py     # 自定义异常类
+│       ├── manager.py        # 代理服务器管理器
+│       ├── models.py         # Pydantic数据模型
+│       └── utils.py          # 工具函数库
+├── tests/                     # 测试套件
+├── docs/                      # 项目文档
+├── main.py                    # 应用程序主入口
+├── requirements.txt           # 运行时依赖
+├── requirements-dev.txt       # 开发依赖
+└── README.md                 # 项目说明
 ```
 
-### 开发环境设置
+## 🔧 技术架构
 
-```bash
-# 克隆代码
-git clone https://github.com/belingud/claudewarp.git
-cd claudewarp
+### 分层架构
 
-# 安装 uv（Python 包管理器）
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# 同步所有依赖
-uv sync --all-groups --all-extras
-
-# 运行测试
-uv run pytest
-
-# 代码格式化
-just format
-
-# 本地构建
-just pyinstaller
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    CLI Interface Layer                      │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │               CLI Commands (Typer)                      ││
+│  │                                                         ││
+│  │ • 代理管理命令 (add, remove, list, use)                ││
+│  │ • Rich输出格式化和美化                                  ││
+│  │ • 交互式命令行界面                                      ││
+│  │ • 彩色日志和错误处理                                    ││
+│  └─────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    Business Logic Layer                     │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │               ProxyManager                              ││
+│  │                                                         ││
+│  │ • 代理服务器生命周期管理 (CRUD)                         ││
+│  │ • 智能代理切换与状态管理                                ││
+│  │ • Claude Code 自动配置集成                              ││
+│  │ • 多格式环境变量导出                                    ││
+│  │ • 搜索、过滤、标签管理                                  ││
+│  │ • 连接验证与健康检查                                    ││
+│  └─────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                     Data Layer                              │
+│┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐│
+││ ConfigManager   │  │  Data Models    │  │   Utilities     ││
+││                 │  │                 │  │                 ││
+││ • JSON配置持久化│  │ • ProxyServer   │  │ • 文件操作      ││
+││ • 自动备份机制  │  │ • ProxyConfig   │  │ • 原子写入      ││
+││ • 版本管理      │  │ • ExportFormat  │  │ • 路径管理      ││
+││ • 配置验证      │  │ • Pydantic验证  │  │ • 异常处理      ││
+│└─────────────────┘  └─────────────────┘  └─────────────────┘│
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### 构建发布版本
+### 核心特性
 
-```bash
-# 本地构建
-just pyinstaller
+#### 1. 纯CLI体验
+- **Typer框架**: 现代化CLI命令处理
+- **Rich输出**: 美化的终端输出和表格显示
+- **交互式界面**: 支持用户友好的命令交互
 
-# 查看构建帮助
-cat BUILD.md
-```
+#### 2. 智能配置管理
+- **自动备份**: 配置变更前自动创建备份
+- **原子操作**: 确保配置文件操作的原子性和一致性
+- **版本控制**: 配置文件版本管理和兼容性检查
 
-详细构建说明请参考 [BUILD.md](BUILD.md)。
+#### 3. Claude Code 集成
+- **无缝集成**: 自动生成和更新 Claude Code 配置文件
+- **智能合并**: 保留用户现有配置，只更新代理相关设置
+- **环境变量**: 支持多种 Shell 格式的环境变量导出
 
-## 🧪 测试
+#### 4. 数据验证与安全
+- **Pydantic模型**: 全面的数据验证和类型安全
+- **输入验证**: URL格式、API密钥格式、名称合规性检查
+- **错误处理**: 结构化异常体系和详细错误信息
 
+## 🛠️ 开发
+
+### 技术栈
+
+- **Python 3.8+** - 核心开发语言
+- **Typer** - CLI命令处理框架
+- **Rich** - 终端输出美化
+- **Pydantic** - 数据验证和序列化
+- **TOML** - 配置文件格式
+- **Colorlog** - 彩色日志输出
+
+### 运行测试
 ```bash
 # 运行所有测试
-uv run pytest
+pytest
 
 # 运行特定测试
-uv run pytest tests/test_manager.py
+pytest tests/test_cli.py
 
 # 生成覆盖率报告
-uv run pytest --cov=claudewarp --cov-report=html
+pytest --cov=claudewarp tests/
 ```
 
-## 🤝 贡献指南
+### 代码格式化
+```bash
+# 格式化代码
+ruff format .
 
-我们欢迎所有形式的贡献！请查看以下步骤：
+# 检查代码风格
+ruff check .
 
-1. **Fork** 本仓库
-2. 创建您的特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交您的更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 开启一个 **Pull Request**
+# 类型检查
+pyright
+```
 
-### 开发规范
+## 📂 配置文件
 
-- 使用 [Ruff](https://ruff.rs/) 进行代码格式化
-- 为新功能添加测试
-- 更新相关文档
+### ClaudeWarp 配置
+配置文件位置: `~/.config/claudewarp/config.toml` (Linux/macOS) 或 `%APPDATA%\claudewarp\config.toml` (Windows)
 
-## 📄 许可证
+### Claude Code 配置
+ClaudeWarp 会自动修改 `~/.claude/settings.json` 文件，格式参考：
 
-本项目采用 GNU Lesser General Public License v3.0 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
+```json
+{
+  "env": {
+    "ANTHROPIC_API_KEY": "your-api-key",
+    "ANTHROPIC_BASE_URL": "https://your-proxy.com",
+    "ANTHROPIC_MODEL": "claude-3-opus",
+    "ANTHROPIC_SMALL_FAST_MODEL": "claude-3-haiku",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": 1
+  },
+  "permissions": {
+    "allow": [],
+    "deny": []
+  }
+}
+```
 
-## 🙏 致谢
+## ⚠️ 重要提醒
 
-- [Typer](https://typer.tiangolo.com/) - 出色的 CLI 框架
-- [PySide6](https://wiki.qt.io/Qt_for_Python) - 强大的 GUI 框架
-- [Pydantic](https://pydantic-docs.helpmanual.io/) - 数据验证库
-- [Rich](https://rich.readthedocs.io/) - 美观的终端输出
+1. **备份配置**: 首次使用前建议备份 Claude Code 配置：
+   ```bash
+   cp ~/.claude/settings.json ~/.claude/settings.json.backup
+   ```
 
-## 🔗 相关链接
+2. **权限要求**: 确保对 `~/.claude/` 目录有读写权限
 
-- [问题反馈](https://github.com/belingud/claudewarp/issues)
-- [变更日志](https://github.com/belingud/claudewarp/releases)
-- [讨论区](https://github.com/belingud/claudewarp/discussions)
+3. **配置冲突**: 如果手动修改了 Claude Code 配置，切换代理时可能会覆盖自定义设置
+
+## 🐛 故障排除
+
+### 常见问题
+
+**Q: 切换代理后 Claude Code 无法连接**
+A: 检查代理 URL 和 API 密钥是否正确，确认代理服务器可访问
+
+**Q: 配置文件损坏怎么办？**
+A: ClaudeWarp 会自动创建备份，可以从 `~/.config/claudewarp/backups/` 恢复
+
+**Q: 权限错误**
+A: 确保对配置目录有读写权限：`chmod 755 ~/.config/claudewarp`
+
+**Q: 依赖安装失败**
+A: 使用 pip 安装： `pip install -r requirements.txt`
+
+## 📜 许可证
+
+本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件
+
+## 🤝 贡献
+
+欢迎提交 Issue 和 Pull Request！
+
+## 📧 联系
+
+如有问题或建议，请提交 GitHub Issue。
 
 ---
 
-<p align="center">
-  Made with ❤️ by ClaudeWarp Team
-</p>
+**ClaudeWarp** - 让 Claude API 代理管理变得简单高效！

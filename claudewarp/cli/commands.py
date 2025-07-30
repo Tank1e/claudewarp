@@ -139,17 +139,38 @@ def add(
                 logger.error("代理服务器URL是必需的")
                 raise typer.Exit(1)
 
-            if key is None:
-                key = typer.prompt("API密钥", hide_input=True)
+            # 交互式认证方式选择
+            if key is None and auth_token is None:
+                console.print("\n[bold yellow]请选择认证方式:[/bold yellow]")
+                console.print("1. API密钥 (sk-xxx)")
+                console.print("2. Auth令牌 (sk-ant-api03-xxx)")
+                
+                auth_choice = typer.prompt("选择认证方式 (1/2)", default="1")
+                
+                if auth_choice == "1":
+                    key = typer.prompt("API密钥", hide_input=True)
+                    if not key:
+                        logger.error("API密钥不能为空")
+                        raise typer.Exit(1)
+                    auth_token = None
+                elif auth_choice == "2":
+                    auth_token = typer.prompt("Auth令牌", hide_input=True)
+                    if not auth_token:
+                        logger.error("Auth令牌不能为空")
+                        raise typer.Exit(1)
+                    key = ""  # 设置为空字符串以通过验证
+                else:
+                    logger.error("无效的选择，请输入1或2")
+                    raise typer.Exit(1)
+            elif key is None and auth_token:
+                key = ""  # auth_token已提供，key设为空
+            elif auth_token is None and key:
+                auth_token = None  # key已提供，auth_token设为None
+            
+            # 最终验证
             if not key and not auth_token:
                 logger.error("必须提供API密钥或Auth令牌")
                 raise typer.Exit(1)
-
-            if auth_token is None:
-                auth_token = (
-                    typer.prompt("Auth令牌（可选，与API密钥互斥）", hide_input=True, default="")
-                    or None
-                )
 
             if not description:
                 description = typer.prompt("描述信息", default="")
